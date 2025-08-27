@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Sincronización Financiera Universal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Chosen Palette: Calm Harmony */
+        /* Application Structure Plan: La aplicación ahora incluye una nueva sección dedicada a la integración con la IA de Gemini. La estructura se ha actualizado para incluir:
+        1. Encabezado
+        2. Formulario de Registro
+        3. Círculo de Posiciones (Visualización del SSFU)
+        4. Contenedor de Información (detalles de usuario y lista)
+        5. Nueva sección "Consultas de Sincronización ✨" con dos funciones impulsadas por IA. La primera genera un mensaje de "lectura energética" basado en la posición del usuario. La segunda genera un borrador de mensaje para invitar a la "dualidad".
+        6. Modal de Mensajes.
+
+        Esta estructura fue elegida para mantener la coherencia y el flujo de la aplicación, añadiendo nuevas funcionalidades lógicas que se relacionan directamente con el propósito del SSFU. Las nuevas características de IA se colocan en una sección propia para que el usuario pueda interactuar con ellas de forma clara y accesible. La primera función ofrece una experiencia introspectiva, mientras que la segunda es una herramienta práctica para la activación de la dualidad. */
+        /* Visualization & Content Choices:
+        - Interfaz de IA: Se utilizan campos de texto, botones y áreas de visualización de texto para las nuevas características. El objetivo es proporcionar una interfaz clara para la interacción con la API de Gemini. La interacción incluye la entrada de texto (para el mensaje de dualidad) y clics en los botones para generar las respuestas. Se muestra un indicador de carga para las respuestas de la IA. La justificación es que estas interfaces son intuitivas y directas. Se usa JavaScript para manejar las peticiones a la API. Library/Method: HTML, CSS, JavaScript, API de Gemini.
+        - Se sigue usando el círculo de posiciones (Divs con CSS), listas de usuarios (HTML ul/li), y un modal personalizado. No se usan gráficos SVG ni Mermaid. */
+        .circle-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 2rem auto;
+            border-radius: 50%;
+            border: 2px dashed #a0a0a0;
+            background-color: #f0f0f0;
+        }
+        .user-spot {
+            position: absolute;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: #333;
+            font-weight: 600;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s ease-in-out;
+            cursor: default;
+            text-align: center;
+            line-height: 45px;
+        }
+        /* Posiciones para los 9 puntos del círculo, más como un reloj */
+        /* Outer 8 spots */
+        #spot-1 { top: 0%; left: 50%; transform: translate(-50%, -50%); } /* 12 en punto */
+        #spot-2 { top: 15%; right: 15%; transform: translate(50%, -50%); } /* ~1:30 */
+        #spot-3 { top: 50%; right: 0%; transform: translate(50%, -50%); } /* 3 en punto */
+        #spot-4 { bottom: 15%; right: 15%; transform: translate(50%, 50%); } /* ~4:30 */
+        #spot-5 { bottom: 0%; left: 50%; transform: translate(-50%, 50%); } /* 6 en punto */
+        #spot-6 { bottom: 15%; left: 15%; transform: translate(-50%, 50%); } /* ~7:30 */
+        #spot-7 { top: 50%; left: 0%; transform: translate(-50%, -50%); } /* 9 en punto */
+        #spot-8 { top: 15%; left: 15%; transform: translate(-50%, -50%); } /* ~10:30 */
+        /* Center spot */
+        #spot-9 { top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #f0f0f0; border: 1px dashed #ccc; z-index: 10; }
+
+        .info-container {
+            margin-top: 2rem;
+            text-align: center;
+            background-color: #f7fafc;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        #user-list {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            list-style-type: none;
+            margin-left: auto;
+            margin-right: auto;
+            width: 90%;
+            background-color: #ffffff;
+        }
+        #user-list li{
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.5rem 0.25rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        #user-list li:last-child{
+            border-bottom: none;
+        }
+        #user-list li span {
+            flex-basis: 48%;
+            text-align: left;
+            margin-bottom: 0.25rem;
+        }
+        #user-list li span:nth-child(even) {
+            text-align: right;
+        }
+        #user-list li .referral-code-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 400px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        @media (max-width: 640px) {
+            #user-list li span {
+                flex-basis: 100%;
+                text-align: left !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased text-gray-800">
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
+        <h1 class="text-3xl font-bold text-center text-indigo-700 mb-6 rounded-lg bg-white p-4 shadow-md">Sistema de Sincronización Financiera Universal</h1>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Registro de Usuario</h2>
+            <form id="register-form" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-gray-600 text-sm font-bold mb-2">Nombre de Usuario:</label>
+                    <input type="text" id="username" name="username" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    <div id="username-error" class="text-red-500 text-xs italic mt-1" style="display: none;"></div>
+                </div>
+                <div>
+                    <label for="email" class="block text-gray-600 text-sm font-bold mb-2">Correo Electrónico:</label>
+                    <input type="email" id="email" name="email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    <div id="email-error" class="text-red-500 text-xs italic mt-1" style="display: none;"></div>
+                </div>
+                <div>
+                    <label for="password" class="block text-gray-600 text-sm font-bold mb-2">Contraseña:</label>
+                    <input type="password" id="password" name="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    <div id="password-error" class="text-red-500 text-xs italic mt-1" style="display: none;"></div>
+                </div>
+                <div>
+                    <label for="referralCodeInput" class="block text-gray-600 text-sm font-bold mb-2">Código de Referencia (Opcional):</label>
+                    <input type="text" id="referralCodeInput" name="referralCodeInput" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <div id="referral-error" class="text-red-500 text-xs italic mt-1" style="display: none;"></div>
+                </div>
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200">Registrarse</button>
+            </form>
+        </div>
+
+        <div class="circle-container relative">
+            <div id="spot-1" class="user-spot text-xs bg-gray-200 text-gray-600">1</div>
+            <div id="spot-2" class="user-spot text-xs bg-gray-200 text-gray-600">2</div>
+            <div id="spot-3" class="user-spot text-xs bg-gray-200 text-gray-600">3</div>
+            <div id="spot-4" class="user-spot text-xs bg-gray-200 text-gray-600">4</div>
+            <div id="spot-5" class="user-spot text-xs bg-gray-200 text-gray-600">5</div>
+            <div id="spot-6" class="user-spot text-xs bg-gray-200 text-gray-600">6</div>
+            <div id="spot-7" class="user-spot text-xs bg-gray-200 text-gray-600">7</div>
+            <div id="spot-8" class="user-spot text-xs bg-gray-200 text-gray-600">8</div>
+            <div id="spot-9" class="user-spot text-xs bg-gray-200 text-gray-600">9</div>
+        </div>
+
+        <div class="info-container bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Usuarios Registrados en SSFU</h2>
+            <p class="text-gray-700 mb-2">Cada usuario que se registra activa el flujo de energía en el sistema.</p>
+            <ul id="user-list">
+                <li class="text-gray-500 italic">No hay usuarios registrados aún.</li>
+            </ul>
+            <p id="current-user-info" class="mt-4 text-indigo-600 font-medium"></p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Consultas de Sincronización ✨</h2>
+            <p class="text-gray-600 mb-4">Utiliza el poder de la IA para obtener guía personalizada de tu SSFU.</p>
+            
+            <div class="mb-6 border p-4 rounded-lg bg-gray-50">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Lectura de Posición</h3>
+                <p class="text-sm text-gray-500 mb-4">Obtén un mensaje de guía basado en la posición de tu usuario actual en el círculo.</p>
+                <div id="position-reading-output" class="text-sm text-gray-700 bg-white p-3 rounded-md mb-2 h-20 overflow-y-auto"></div>
+                <button id="getPositionReadingBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200">
+                    Obtener Lectura de Posición ✨
+                </button>
+            </div>
+
+            <div class="border p-4 rounded-lg bg-gray-50">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Redactar Mensaje de Dualidad</h3>
+                <p class="text-sm text-gray-500 mb-4">Genera un borrador de mensaje personalizado para invitar a alguien a tu dualidad.</p>
+                <textarea id="duality-keywords-input" placeholder="Ejemplo: amigo de la infancia, le gusta la tecnología, busca un cambio" class="w-full h-24 p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2"></textarea>
+                <div id="duality-message-output" class="text-sm text-gray-700 bg-white p-3 rounded-md mb-2 h-20 overflow-y-auto"></div>
+                <button id="generateDualityMessageBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200">
+                    Generar Mensaje de Dualidad ✨
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Custom Modal for Messages -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeModalBtn">&times;</span>
+            <p id="modalMessage" class="text-lg font-semibold text-gray-800"></p>
+            <button id="modalActionButton" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200" style="display: none;">Copiar Código</button>
+        </div>
+    </div>
+    
+    <script>
+        const API_KEY = ""; // La clave API será proporcionada por el entorno de Canvas.
+
+        let users = [];
+        let nextPosition = 1;
+        let currentUser = null;
+        let activatedUsers = 0;
+        const centralFunds = { saldo: 0 };
+
+        const spotElements = [
+            document.getElementById('spot-1'),
+            document.getElementById('spot-2'),
+            document.getElementById('spot-3'),
+            document.getElementById('spot-4'),
+            document.getElementById('spot-5'),
+            document.getElementById('spot-6'),
+            document.getElementById('spot-7'),
+            document.getElementById('spot-8'),
+            document.getElementById('spot-9')
+        ];
+
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+        const API_URL_IMAGE = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${API_KEY}`;
+
+        function generateReferralCode() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        document.getElementById('register-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const referralCodeInput = document.getElementById('referralCodeInput').value.trim().toUpperCase();
+            let hasErrors = false;
+
+            document.getElementById('username-error').style.display = 'none';
+            document.getElementById('email-error').style.display = 'none';
+            document.getElementById('password-error').style.display = 'none';
+            document.getElementById('referral-error').style.display = 'none';
+
+            if (!username) {
+                formErrorResponse("username-error", "El nombre de usuario es requerido");
+                hasErrors = true;
+            } else if (username.length < 3) {
+                formErrorResponse("username-error", "El nombre de usuario debe tener al menos 3 caracteres");
+                hasErrors = true;
+            }
+
+            if (!email) {
+                formErrorResponse("email-error", "El correo electrónico es requerido");
+                hasErrors = true;
+            } else if (!isValidEmail(email)) {
+                formErrorResponse("email-error", "El correo electrónico no es válido");
+                hasErrors = true;
+            }
+
+            if (!password) {
+                formErrorResponse("password-error", "La contraseña es requerida");
+                hasErrors = true;
+            } else if (password.length < 6) {
+                formErrorResponse("password-error", "La contraseña debe tener al menos 6 caracteres");
+                hasErrors = true;
+            }
+            
+            if (referralCodeInput) {
+                const referrer = users.find(u => u.referralCode === referralCodeInput);
+                if (!referrer) {
+                    formErrorResponse("referral-error", "Código de referencia no válido.");
+                    hasErrors = true;
+                }
+            }
+
+            if (hasErrors) {
+                return;
+            }
+
+            const newReferralCode = generateReferralCode();
+            const newUser = {
+                id: users.length + 1,
+                username: username,
+                email: email,
+                password: password,
+                saldo: 0,
+                posicion: nextPosition,
+                ciclosCompletados: 0,
+                activo: false,
+                referralCode: newReferralCode,
+                referredBy: referralCodeInput || null,
+                referredUsers: []
+            };
+
+            users.push(newUser);
+            currentUser = newUser;
+
+            if (referralCodeInput) {
+                const referrer = users.find(u => u.referralCode === referralCodeInput);
+                if (referrer) {
+                    referrer.referredUsers.push(newUser.id);
+                    showMessage(`¡${newUser.username} se ha registrado usando tu código!`, false);
+                }
+            }
+
+            centralFunds.saldo += 100;
+
+            moveUsers();
+            
+            nextPosition = (nextPosition === 9) ? 1 : nextPosition + 1;
+
+            updateVisualPositions();
+            updateUserList();
+            updateCurrentUserinfo();
+            showMessage(`Usuario ${newUser.username} registrado con éxito. Su posición es ${newUser.posicion}. Comparte tu código: ${newUser.referralCode}`, true, newUser.referralCode);
+
+            document.getElementById('register-form').reset();
+        });
+
+        function moveUsers() {
+            users.forEach(user => {
+                user.posicion = (user.posicion === 9) ? 1 : user.posicion + 1;
+            });
+        }
+
+        function updateVisualPositions() {
+            spotElements.forEach(spot => {
+                spot.innerHTML = `<span class="opacity-50">${spot.id.replace('spot-', '')}</span>`;
+                spot.style.backgroundColor = '#e0e0e0';
+                spot.style.color = '#333';
+            });
+
+            users.forEach(user => {
+                const spot = spotElements[user.posicion - 1];
+                if (spot) {
+                    spot.textContent = user.username;
+                    spot.style.backgroundColor = '#86ef7d';
+                    spot.style.color = '#1f2937';
+                    if (user.activo) {
+                        spot.style.backgroundColor = '#22c55e';
+                    }
+                }
+            });
+        }
+
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        function formErrorResponse(inputId, response) {
+            const errorElement = document.getElementById(inputId);
+            errorElement.textContent = response;
+            errorElement.style.display = 'block';
+        }
+
+        function updateUserList() {
+            const userList = document.getElementById('user-list');
+            userList.innerHTML = '';
+            if (users.length === 0) {
+                userList.innerHTML = '<li class="text-gray-500 italic text-center">No hay usuarios registrados aún.</li>';
+                return;
+            }
+            users.forEach(user => {
+                const listItem = document.createElement('li');
+                const hasDuality = user.referredUsers.length >= 1;
+                listItem.innerHTML = `
+                    <span>Usuario: <strong class="text-indigo-700">${user.username}</strong></span>
+                    <span>Saldo: <span class="text-green-600">$${user.saldo.toFixed(2)}</span></span>
+                    <span>Posición: <strong class="text-blue-600">${user.posicion}</strong></span>
+                    <span>Ciclos: ${user.ciclosCompletados}</span>
+                    <span>Activo: <span class="${user.activo ? 'text-green-500' : 'text-red-500'}">${user.activo ? 'Sí' : 'No'}</span></span>
+                    <span class="referral-code-wrapper">Código Ref: <span class="font-mono text-sm bg-gray-100 p-1 rounded">${user.referralCode}</span></span>
+                    <span>Dualidad: <span class="${hasDuality ? 'text-green-500' : 'text-red-500'}">${hasDuality ? 'Sí' : 'No'} (${user.referredUsers.length} invitado${user.referredUsers.length === 1 ? '' : 's'})</span></span>
+                `;
+                userList.appendChild(listItem);
+            });
+        }
+
+        function updateCurrentUserinfo() {
+            const infoContainer = document.getElementById('current-user-info');
+            if (currentUser) {
+                const hasDuality = currentUser.referredUsers.length >= 1;
+                infoContainer.innerHTML = `
+                    <span class="block mb-1">Usuario Actual: <strong class="text-indigo-700">${currentUser.username}</strong></span>
+                    <span class="block mb-1">Saldo: <span class="text-green-600">$${currentUser.saldo.toFixed(2)}</span></span>
+                    <span class="block mb-1">Posición: <strong class="text-blue-600">${currentUser.posicion}</strong></span>
+                    <span class="block mb-1">Ciclos Completados: ${currentUser.ciclosCompletados}</span>
+                    <span class="block mb-1">Activo: <span class="${currentUser.activo ? 'text-green-500' : 'text-red-500'}">${currentUser.activo ? 'Sí' : 'No'}</span></span>
+                    <span class="block mb-1">Tu Código Ref: <strong class="font-mono text-sm bg-gray-100 p-1 rounded">${currentUser.referralCode}</strong></span>
+                    <span class="block">Tu Dualidad: <span class="${hasDuality ? 'text-green-500' : 'text-red-500'}">${hasDuality ? 'Sí' : 'No'} (${currentUser.referredUsers.length} invitado${currentUser.referredUsers.length === 1 ? '' : 's'})</span></span>
+                `;
+            } else {
+                infoContainer.textContent = 'No hay usuario actual registrado.';
+            }
+        }
+
+        const messageModal = document.getElementById('messageModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const modalActionButton = document.getElementById('modalActionButton');
+
+        function showMessage(message, showCopyButton = false, textToCopy = '') {
+            modalMessage.textContent = message;
+            if (showCopyButton) {
+                modalActionButton.style.display = 'inline-block';
+                modalActionButton.onclick = () => {
+                    document.execCommand('copy');
+                };
+            } else {
+                modalActionButton.style.display = 'none';
+            }
+            messageModal.style.display = 'flex';
+        }
+
+        closeModalBtn.onclick = function() {
+            messageModal.style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target == messageModal) {
+                messageModal.style.display = 'none';
+            }
+        }
+
+        function activateUser9() {
+            const user9 = users.find(user => user.posicion === 9);
+            if (user9) {
+                const hasDuality = user9.referredUsers.length >= 1;
+                if (hasDuality) {
+                    user9.activo = true;
+                    user9.ciclosCompletados++;
+
+                    centralFunds.saldo -= 40;
+                    user9.saldo += 40;
+
+                    activatedUsers++;
+
+                    if (activatedUsers % 4 === 0) {
+                        centralFunds.saldo -= 20;
+                        user9.saldo += 20;
+                    }
+
+                    showMessage(`¡Felicidades! El usuario ${user9.username} (Posición 9) ha completado un ciclo y se ha activado gracias a su dualidad.`);
+                    updateUserList();
+                    updateCurrentUserinfo();
+                } else {
+                    showMessage(`El usuario ${user9.username} está en Posición 9, pero necesita invitar a su dualidad para activarse.`);
+                }
+            }
+        }
+
+        function simulateTransactions() {
+            if (users.length > 0) {
+                const activeUsers = users.filter(user => user.activo);
+                if (activeUsers.length > 0) {
+                    const randomActiveUserIndex = Math.floor(Math.random() * activeUsers.length);
+                    const transactionUser = activeUsers[randomActiveUserIndex];
+
+                    const isDeposit = Math.random() > 0.5;
+                    const amount = Math.floor(Math.random() * 30) + 10;
+
+                    if (isDeposit) {
+                        transactionUser.saldo += amount;
+                        centralFunds.saldo -= amount;
+                    } else {
+                        if (transactionUser.saldo >= amount) {
+                            transactionUser.saldo -= amount;
+                            centralFunds.saldo += amount;
+                        }
+                    }
+                }
+                updateUserList();
+                updateCurrentUserinfo();
+            }
+        }
+
+        async function getPositionReading() {
+            const outputElement = document.getElementById('position-reading-output');
+            if (!currentUser) {
+                outputElement.textContent = "Por favor, regístrate primero para obtener tu lectura.";
+                return;
+            }
+
+            outputElement.textContent = "Conectando con la fuente... ✨";
+
+            const userPrompt = `Actúa como un guía espiritual de un Sistema de Sincronización Financiera Universal (SSFU). El usuario ${currentUser.username} está en la posición ${currentUser.posicion}. Explica el significado de esta posición para su viaje de abundancia y ofrécele un mensaje de motivación personalizado que resuene con esta etapa. No uses más de 100 palabras.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+                tools: [{ "google_search": {} }]
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error('API request failed');
+                const result = await response.json();
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo obtener la lectura. Intenta de nuevo.";
+                outputElement.textContent = text;
+            } catch (error) {
+                outputElement.textContent = "Error al obtener la lectura. Por favor, revisa la consola para más detalles.";
+                console.error("Error fetching Gemini API:", error);
+            }
+        }
+
+        async function generateDualityMessage() {
+            const keywords = document.getElementById('duality-keywords-input').value;
+            const outputElement = document.getElementById('duality-message-output');
+
+            if (!currentUser) {
+                outputElement.textContent = "Por favor, regístrate primero para generar un mensaje.";
+                return;
+            }
+            if (!keywords.trim()) {
+                outputElement.textContent = "Por favor, introduce algunas ideas clave.";
+                return;
+            }
+
+            outputElement.textContent = "Generando mensaje con la energía de la dualidad... ✨";
+
+            const userPrompt = `Genera un mensaje de invitación corto y personal para un amigo. La meta es que se unan a un 'Sistema de Sincronización Financiera Universal'. Debes ser inspirador y claro. Incluye las siguientes ideas clave del usuario: "${keywords}". No uses más de 80 palabras.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+                tools: [{ "google_search": {} }]
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error('API request failed');
+                const result = await response.json();
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo generar el mensaje. Intenta de nuevo.";
+                outputElement.textContent = text;
+            } catch (error) {
+                outputElement.textContent = "Error al generar el mensaje. Por favor, revisa la consola para más detalles.";
+                console.error("Error fetching Gemini API:", error);
+            }
+        }
+
+        document.getElementById('getPositionReadingBtn').addEventListener('click', getPositionReading);
+        document.getElementById('generateDualityMessageBtn').addEventListener('click', generateDualityMessage);
+
+        setInterval(simulateTransactions, 5000);
+        setInterval(() => {
+            if (users.length >= 1) {
+                activateUser9();
+            }
+        }, 10000);
+
+        updateVisualPositions();
+        updateUserList();
+        updateCurrentUserinfo();
+    </script>
+</body>
+</html>
